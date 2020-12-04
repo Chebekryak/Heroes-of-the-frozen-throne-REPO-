@@ -7,11 +7,13 @@ class Board:
         self.width = width
         self.height = height
         self.cell_size = cell_size
-        self.board = [[Hexagon() for _ in range(int(self.width // (cell_size * 3)) * 2)]
-                      for _ in range(int(self.height // (cell_size * (3 ** 0.5))))]
+        self.diagonal = cell_size * (3 ** 0.5)
+        self.board = [[Hexagon((j, i), (round(cell_size + cell_size * 1.5 * j),
+                                        round(self.diagonal // 2 + self.diagonal * i + (self.diagonal // 2 if not j % 2 else 0))))
+                       for j in range(int(self.width // (cell_size * 3)) * 2)]
+                      for i in range(int(self.height // (cell_size * (3 ** 0.5))))]
+        self.one_d_board = [i for j in self.board for i in j]
         self.screen = pygame.display.set_mode((self.width, self.height))
-        print(len(self.board))
-        print(len(self.board[0]))
 
     def draw_hex_map(self):
         for i in range(len(self.board)):
@@ -29,13 +31,14 @@ class Board:
                                                   (self.cell_size // 2, diagonal),
                                                   (0, diagonal // 2)
                                               ))), 1)
-                pygame.draw.circle(self.screen, pygame.Color("red"),
-                                 (round(self.cell_size + self.cell_size * 1.5 * j),
-                                  round(diagonal // 2 + diagonal * i + (diagonal // 2 if second_one else 0))),
-                                 round(diagonal // 2), 1)
+                pygame.draw.circle(self.screen, pygame.Color("red"), self.board[i][j].center, 2)
 
-    def chose_hexagon(self):
-        pass
+    def chose_hexagon(self, pos):
+        x = min(self.one_d_board, key=lambda x: ((x.center[0] - pos[0]) ** 2 + (x.center[1] - pos[1]) ** 2) ** 0.5)
+        if ((x.center[0] - pos[0]) ** 2 + (x.center[1] - pos[1]) ** 2) ** 0.5 > self.diagonal // 2:
+            print(None)
+        else:
+            print(x.index)
 
     def render(self):
         flag = True
@@ -46,9 +49,9 @@ class Board:
                 if event.type == pygame.QUIT:
                     flag = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    print(event.pos)
+                    self.chose_hexagon(event.pos)
             pygame.display.flip()
 
 
-test = Board(400, 400, 20)
+test = Board(400, 400, 50)
 test.render()
