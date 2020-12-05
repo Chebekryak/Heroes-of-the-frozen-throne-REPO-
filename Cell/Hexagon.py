@@ -7,3 +7,6 @@ class Hexagon:
 
     def set_unit(self, unit):
         self.unit = unit
+
+    def get_param(self):
+        return self.index, self.center, self.pos

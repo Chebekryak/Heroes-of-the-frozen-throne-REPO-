@@ -1,4 +1,4 @@
-from Cell.Hexagon import *
+from Cell.Tail import *
 from Units.BaseUnit import *
 import pygame
 
@@ -29,12 +29,15 @@ class Board:
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.chosen_unit = None
         self.hexagons_to_move = []
+        self.board[3][3] = Tail(*self.board[3][3].get_param())
 
     def draw_hex_map(self):
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
-                if self.board[i][j]:
+                if type(self.board[i][j]) == Hexagon:
                     pygame.draw.polygon(self.screen, pygame.Color("white"), self.board[i][j].pos, 1)
+                else:
+                    pygame.draw.polygon(self.screen, pygame.Color("grey"), self.board[i][j].pos)
 
     def draw_units(self):
         for i in range(len(self.board)):
@@ -73,7 +76,7 @@ class Board:
             for j in range(pos[0] - move, pos[0] + move + 1):
                 for i in range(pos[1] - move + helper_1 - (1 if j == pos[0] and helper_1 else 0),
                                pos[1] + move + 1 + helper_2 + (1 if j == pos[0] and helper_2 else 0)):
-                    if pos != (j, i):
+                    if pos != (j, i) and type(self.board[i][j]) == Hexagon:
                         try:
                             if i < 0 or j < 0:
                                 raise IndexError
