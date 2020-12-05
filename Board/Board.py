@@ -100,6 +100,7 @@ class Board:
                         5, 5))
 
     def move_unit(self, to_hexagon):
+        # TODO Функция косячит
         def dist(p1, p2):
             y1, x1 = p1[::-1]
             y2, x2 = p2[::-1]
