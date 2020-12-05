@@ -75,6 +75,8 @@ class Board:
                                pos[1] + move + 1 + helper_2 + (1 if j == pos[0] and helper_2 else 0)):
                     if pos != (j, i):
                         try:
+                            if i < 0 or j < 0:
+                                raise IndexError
                             self.hexagons_to_move += [self.board[i][j]]
                             next_ += [self.board[i][j]]
                         except IndexError:
@@ -95,7 +97,15 @@ class Board:
                         5, 5))
 
     def move_unit(self, to_hexagon):
+        def dist(p1, p2):
+            y1, x1 = p1[::-1]
+            y2, x2 = p2[::-1]
+            du = x2 - x1
+            dv = (y2 + x2 // 2) - (y1 + x1 // 2)
+            return max(abs(du), abs(dv)) if ((du >= 0 and dv >= 0) or (du < 0 and dv < 0)) else abs(du) + abs(dv)
+
         if to_hexagon in self.hexagons_to_move:
+            self.chosen_unit.unit.move(dist(to_hexagon.index[::-1], self.chosen_unit.index[::-1]))
             self.board[to_hexagon.index[1]][to_hexagon.index[0]].unit = self.chosen_unit.unit
             self.chosen_unit.unit = None
             self.chosen_unit = None
