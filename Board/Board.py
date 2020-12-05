@@ -58,9 +58,8 @@ class Board:
     def chose_unit(self, pos):
         hexagon = self.chose_hexagon(pos)
         if not hexagon or hexagon.unit is None:
-            self.chosen_unit = None
-            return -1
-        self.chosen_unit = hexagon
+            return None
+        return hexagon
 
     def draw_chosen_unit(self):
         def add_to_hexagons_to_move(hexagon):
@@ -74,12 +73,12 @@ class Board:
             for j in range(pos[0] - move, pos[0] + move + 1):
                 for i in range(pos[1] - move + helper_1 - (1 if j == pos[0] and helper_1 else 0),
                                pos[1] + move + 1 + helper_2 + (1 if j == pos[0] and helper_2 else 0)):
-                    if all([len(self.board) - 1 >= i >= 0,
-                            len(self.board[0]) >= j >= 0,
-                            pos != (j, i),
-                            self.board[i][j]]):
-                        self.hexagons_to_move += [self.board[i][j]]
-                        next_ += [self.board[i][j]]
+                    if pos != (j, i):
+                        try:
+                            self.hexagons_to_move += [self.board[i][j]]
+                            next_ += [self.board[i][j]]
+                        except IndexError:
+                            pass
             return next_
 
         if self.chosen_unit:
@@ -95,6 +94,13 @@ class Board:
                         *self.board[elm.index[1]][elm.index[0]].center,
                         5, 5))
 
+    def move_unit(self, to_hexagon):
+        if to_hexagon in self.hexagons_to_move:
+            self.board[to_hexagon.index[1]][to_hexagon.index[0]].unit = self.chosen_unit.unit
+            self.chosen_unit.unit = None
+            self.chosen_unit = None
+            self.hexagons_to_move = []
+
     def render(self):
         self.board[5][5].set_unit(BaseUnit())
         flag = True
@@ -107,7 +113,10 @@ class Board:
                 if event.type == pygame.QUIT:
                     flag = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    self.chose_unit(event.pos)
+                    if not self.hexagons_to_move:
+                        self.chosen_unit = self.chose_unit(event.pos)
+                    else:
+                        self.move_unit(self.chose_hexagon(event.pos))
             pygame.display.flip()
 
 
