@@ -76,14 +76,16 @@ class Board:
             for j in range(pos[0] - move, pos[0] + move + 1):
                 for i in range(pos[1] - move + helper_1 - (1 if j == pos[0] and helper_1 else 0),
                                pos[1] + move + 1 + helper_2 + (1 if j == pos[0] and helper_2 else 0)):
-                    if pos != (j, i) and type(self.board[i][j]) == Hexagon:
-                        try:
-                            if i < 0 or j < 0:
-                                raise IndexError
+                    try:
+                        if i < 0 or i >= len(self.board) or j < 0 or j >= len(self.board[0])\
+                                or pos == (j, i) or type(self.board[i][j]) != Hexagon:
+                            raise IndexError
+                        if self.board[i][j] not in self.hexagons_to_move:
                             self.hexagons_to_move += [self.board[i][j]]
-                            next_ += [self.board[i][j]]
-                        except IndexError:
-                            pass
+                            if self.board[i][j] not in next_:
+                                next_ += [self.board[i][j]]
+                    except IndexError:
+                        pass
             return next_
 
         if self.chosen_unit:
@@ -100,12 +102,12 @@ class Board:
                         5, 5))
 
     def move_unit(self, to_hexagon):
-        # TODO Функция косячит
         def dist(p1, p2):
-            y1, x1 = p1[::-1]
-            y2, x2 = p2[::-1]
+            y1, x1 = p1
+            y2, x2 = p2
             du = x2 - x1
             dv = (y2 + x2 // 2) - (y1 + x1 // 2)
+            print(max(abs(du), abs(dv)) if ((du >= 0 and dv >= 0) or (du < 0 and dv < 0)) else abs(du) + abs(dv))
             return max(abs(du), abs(dv)) if ((du >= 0 and dv >= 0) or (du < 0 and dv < 0)) else abs(du) + abs(dv)
 
         if to_hexagon in self.hexagons_to_move:
@@ -116,7 +118,7 @@ class Board:
             self.hexagons_to_move = []
 
     def render(self):
-        self.board[5][5].set_unit(BaseUnit())
+        self.board[0][0].set_unit(BaseUnit())
         flag = True
         while flag:
             self.screen.fill((0, 0, 0))
