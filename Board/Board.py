@@ -28,7 +28,7 @@ class Board:
         self.one_d_board = [i for j in self.board for i in j]
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.chosen_unit = None
-        self.hexagons_to_move = []
+        self.hexagons_to_move = {}
         self.board[3][3] = Tail(*self.board[3][3].get_param())
 
     def draw_hex_map(self):
@@ -65,7 +65,7 @@ class Board:
         return hexagon
 
     def draw_chosen_unit(self):
-        def add_to_hexagons_to_move(hexagon):
+        def add_to_hexagons_to_move(hexagon, num_):
             next_ = []
             move = 1
             pos = hexagon.index
@@ -81,7 +81,7 @@ class Board:
                                 or pos == (j, i) or type(self.board[i][j]) != Hexagon:
                             raise IndexError
                         if self.board[i][j] not in self.hexagons_to_move:
-                            self.hexagons_to_move += [self.board[i][j]]
+                            self.hexagons_to_move[self.board[i][j]] = num_
                             if self.board[i][j] not in next_:
                                 next_ += [self.board[i][j]]
                     except IndexError:
@@ -90,32 +90,24 @@ class Board:
 
         if self.chosen_unit:
             to_do = [self.chosen_unit]
-            for _ in range(self.chosen_unit.unit.moved):
+            for num in range(self.chosen_unit.unit.moved):
                 new = []
                 for elm in to_do:
-                    new += add_to_hexagons_to_move(elm)
+                    new += add_to_hexagons_to_move(elm, num + 1)
                 to_do = new[:]
-            for elm in self.hexagons_to_move:
+            for elm in self.hexagons_to_move.keys():
                 pygame.draw.rect(
                     self.screen, pygame.Color("red"), (
                         *self.board[elm.index[1]][elm.index[0]].center,
                         5, 5))
 
     def move_unit(self, to_hexagon):
-        def dist(p1, p2):
-            y1, x1 = p1
-            y2, x2 = p2
-            du = x2 - x1
-            dv = (y2 + x2 // 2) - (y1 + x1 // 2)
-            print(max(abs(du), abs(dv)) if ((du >= 0 and dv >= 0) or (du < 0 and dv < 0)) else abs(du) + abs(dv))
-            return max(abs(du), abs(dv)) if ((du >= 0 and dv >= 0) or (du < 0 and dv < 0)) else abs(du) + abs(dv)
-
         if to_hexagon in self.hexagons_to_move:
-            self.chosen_unit.unit.move(dist(to_hexagon.index[::-1], self.chosen_unit.index[::-1]))
+            self.chosen_unit.unit.move(self.hexagons_to_move[to_hexagon])
             self.board[to_hexagon.index[1]][to_hexagon.index[0]].unit = self.chosen_unit.unit
             self.chosen_unit.unit = None
             self.chosen_unit = None
-            self.hexagons_to_move = []
+            self.hexagons_to_move = {}
 
     def render(self):
         self.board[0][0].set_unit(BaseUnit())
