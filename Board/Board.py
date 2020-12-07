@@ -12,15 +12,15 @@ class Board:
         self.board = [[Hexagon((j, i), (round(cell_size + cell_size * 1.5 * j),
                                         round(self.diagonal // 2 + self.diagonal * i + (
                                             self.diagonal // 2 if not j % 2 else 0))),
-                               tuple(map(lambda x: (x[0] + self.cell_size * 1.5 * j,
+                               tuple(map(lambda x: (x[0] + cell_size * 1.5 * j,
                                                     x[1] + self.diagonal * i + (
                                                         self.diagonal // 2 if not bool(j % 2) else 0)),
                                          (
-                                             (self.cell_size // 2, 0),
-                                             (self.cell_size // 2 + self.cell_size, 0),
-                                             (self.cell_size * 2, self.diagonal // 2),
-                                             (self.cell_size // 2 + self.cell_size, self.diagonal),
-                                             (self.cell_size // 2, self.diagonal),
+                                             (cell_size // 2, 0),
+                                             (cell_size // 2 + cell_size, 0),
+                                             (cell_size * 2, self.diagonal // 2),
+                                             (cell_size // 2 + cell_size, self.diagonal),
+                                             (cell_size // 2, self.diagonal),
                                              (0, self.diagonal // 2)
                                          ))))
                        for j in range(int(self.width // (cell_size * 3)) * 2)]
@@ -29,15 +29,48 @@ class Board:
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.chosen_unit = None
         self.hexagons_to_move = {}
+        self.changing_camera_pos = False
         self.board[3][3] = Tail(*self.board[3][3].get_param())
+
+    def change_hexagons_size(self, cell_size):
+        self.cell_size = cell_size
+        self.diagonal = cell_size * (3 ** 0.5)
+        for i in range(len(self.board)):
+            for j in range(len(self.board[0])):
+                self.board[i][j].change_points(
+                    tuple(map(lambda x: (x[0] + self.cell_size * 1.5 * j,
+                                         x[1] + self.diagonal * i + (
+                                             self.diagonal // 2 if not bool(j % 2) else 0)),
+                              (
+                                  (cell_size // 2, 0),
+                                  (cell_size // 2 + cell_size, 0),
+                                  (cell_size * 2, self.diagonal // 2),
+                                  (cell_size // 2 + cell_size, self.diagonal),
+                                  (cell_size // 2, self.diagonal),
+                                  (0, self.diagonal // 2)
+                              )))
+                )
+                self.board[i][j].change_center(
+                    (round(cell_size + cell_size * 1.5 * j),
+                     round(self.diagonal // 2 + self.diagonal * i + (
+                         self.diagonal // 2 if not j % 2 else 0)))
+                )
+
+    def change_hexagons_pos(self, pos):
+        for i in range(len(self.board)):
+            for j in range(len(self.board[0])):
+                self.board[i][j].change_points(tuple(map(lambda x: (x[0] + pos[0], x[1] + pos[1]),
+                                                         self.board[i][j].points)))
+                self.board[i][j].change_center((self.board[i][j].center[0] + pos[0],
+                                                self.board[i][j].center[1] + pos[1]))
 
     def draw_hex_map(self):
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
                 if type(self.board[i][j]) == Hexagon:
-                    pygame.draw.polygon(self.screen, pygame.Color("white"), self.board[i][j].pos, 1)
+                    pygame.draw.polygon(self.screen, pygame.Color("white"), self.board[i][j].points, 1)
                 else:
-                    pygame.draw.polygon(self.screen, pygame.Color("grey"), self.board[i][j].pos)
+                    pygame.draw.polygon(self.screen, pygame.Color("grey"), self.board[i][j].points)
 
     def draw_units(self):
         for i in range(len(self.board)):
@@ -77,7 +110,7 @@ class Board:
                 for i in range(pos[1] - move + helper_1 - (1 if j == pos[0] and helper_1 else 0),
                                pos[1] + move + 1 + helper_2 + (1 if j == pos[0] and helper_2 else 0)):
                     try:
-                        if i < 0 or i >= len(self.board) or j < 0 or j >= len(self.board[0])\
+                        if i < 0 or i >= len(self.board) or j < 0 or j >= len(self.board[0]) \
                                 or pos == (j, i) or type(self.board[i][j]) != Hexagon:
                             raise IndexError
                         if self.board[i][j] not in self.hexagons_to_move:
@@ -102,7 +135,7 @@ class Board:
                         5, 5))
 
     def move_unit(self, to_hexagon):
-        if to_hexagon in self.hexagons_to_move:
+        if to_hexagon in self.hexagons_to_move and not self.chosen_unit == to_hexagon:
             self.chosen_unit.unit.move(self.hexagons_to_move[to_hexagon])
             self.board[to_hexagon.index[1]][to_hexagon.index[0]].unit = self.chosen_unit.unit
             self.chosen_unit.unit = None
@@ -120,11 +153,26 @@ class Board:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     flag = False
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if not self.hexagons_to_move:
-                        self.chosen_unit = self.chose_unit(event.pos)
-                    else:
-                        self.move_unit(self.chose_hexagon(event.pos))
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        if not self.hexagons_to_move:
+                            self.chosen_unit = self.chose_unit(event.pos)
+                        else:
+                            self.move_unit(self.chose_hexagon(event.pos))
+                    elif event.button == 2:
+                        print(1)
+                        self.changing_camera_pos = True
+                    elif event.button == 4:
+                        self.change_hexagons_size(self.cell_size + 5)
+                    elif event.button == 5:
+                        self.change_hexagons_size(self.cell_size - 5)
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    if event.button == 2:
+                        self.changing_camera_pos = False
+                elif event.type == pygame.MOUSEMOTION:
+                    if self.changing_camera_pos:
+                        pos = tuple(map(lambda x: x // 1.1, list(event.rel)))
+                        self.change_hexagons_pos(pos)
             pygame.display.flip()
 
 
