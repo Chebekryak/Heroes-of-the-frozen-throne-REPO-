@@ -172,7 +172,7 @@ class Board:
                             self.camera_zooming += 1
                     elif event.button == 5:
                         if self.camera_zooming - 1 >= -1:
-                            self.change_hexagons_size(self.cell_size - 5, event.pos, True)
+                            self.change_hexagons_size(self.cell_size - 5, event.pos)
                             self.camera_zooming -= 1
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 2:
