@@ -178,17 +178,24 @@ class Board:
                     if event.button == 2:
                         self.changing_camera_pos = False
                 elif event.type == pygame.MOUSEMOTION:
-                    # TODO
                     if self.changing_camera_pos:
-                        left = round(self.board[0][0].center[0] - self.cell_size), \
-                               round(self.board[0][0].center[1] - self.diagonal)
-                        right = round(self.board[-1][-1].center[0] + self.cell_size), \
-                                round(self.board[-1][-1].center[1] + self.diagonal)
-                        print(left, right)
-                        print(event.rel)
-                        self.camera_pos[0] -= event.rel[0]
-                        self.camera_pos[1] -= event.rel[1]
-                        self.change_hexagons_pos(event.rel)
+                        e = event.rel
+                        if e[0] > 0:
+                            if self.board[0][0].center[0] - 5 * self.cell_size < 0:
+                                self.camera_pos[0] -= event.rel[0]
+                                self.change_hexagons_pos((event.rel[0], 0))
+                        elif e[0] < 0:
+                            if self.board[0][-1].center[0] + 5 * self.cell_size > self.width:
+                                self.camera_pos[0] -= event.rel[0]
+                                self.change_hexagons_pos((event.rel[0], 0))
+                        if e[1] > 0:
+                            if self.board[0][0].center[1] - self.diagonal - 4 * self.cell_size < 0:
+                                self.camera_pos[1] -= event.rel[1]
+                                self.change_hexagons_pos((0, event.rel[1]))
+                        elif e[1] < 0:
+                            if self.board[-1][-1].center[1] + self.diagonal + 4 * self.cell_size > self.height:
+                                self.camera_pos[1] -= event.rel[1]
+                                self.change_hexagons_pos((0, event.rel[1]))
             pygame.display.flip()
 
 
