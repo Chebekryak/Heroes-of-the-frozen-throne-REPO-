@@ -33,6 +33,8 @@ class Board:
         self.camera_zooming = 0
         self.camera_pos = [0, 0]
         self.camera_data = [self.cell_size, self.diagonal]
+        self.change_hexagons_pos(((self.width - (self.board[-1][-1].center[0] + self.cell_size)) // 2,
+                                 ((self.height - (self.board[-1][-1].center[1] + self.diagonal)) // 2)))
         self.board[3][3] = Tail(*self.board[3][3].get_param())
 
     def change_hexagons_size(self, cell_size, m_p):
