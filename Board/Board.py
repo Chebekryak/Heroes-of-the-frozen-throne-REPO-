@@ -1,6 +1,7 @@
 from Cell.Tiles import *
 from Cell.Hexagon import Hexagon
 from Units.BaseUnit import *
+from random import choice, randint
 import pygame
 
 
@@ -8,6 +9,7 @@ class Board:
     def __init__(self, width, height, cell_size):
         self.width = width
         self.height = height
+        self.start_cell_size = cell_size
         self.cell_size = cell_size
         self.diagonal = cell_size * (3 ** 0.5)
         self.rendering = True
@@ -25,7 +27,7 @@ class Board:
                                              (cell_size // 2, self.diagonal),
                                              (0, self.diagonal // 2)
                                          ))))
-                       for j in range(int(self.width // (cell_size * 3)) * 2)]
+                       for j in range(int(self.width // (cell_size * 3)) * 2 - 1)]
                       for i in range(int(self.height // (cell_size * (3 ** 0.5))))]
         self.one_d_board = [i for j in self.board for i in j]
         self.screen = pygame.display.set_mode((self.width, self.height))
@@ -36,7 +38,38 @@ class Board:
         self.camera_pos = [0, 0]
         self.camera_data = [self.cell_size, self.diagonal]
         self.change_hexagons_pos(((self.width - (self.board[-1][-1].center[0] + self.cell_size)) // 2,
-                                 ((self.height - (self.board[-1][-1].center[1] + self.diagonal)) // 2)))
+                                  ((self.height - (self.board[-1][-1].center[1] + self.diagonal // 2)) // 2)))
+        self.turn = 0
+        self.throne_0 = []
+        self.throne_1 = []
+        self.throne_menu = False
+        self.generate()
+
+    def generate(self):
+        # Создание тронов
+        self.throne_0 += [
+            self.board[len(self.board) // 2 - 1][0],
+            self.board[len(self.board) // 2][0],
+            self.board[len(self.board) // 2 + 1][0],
+            self.board[len(self.board) // 2][1],
+            self.board[len(self.board) // 2 + 1][1]
+        ]
+        self.throne_1 += [
+            self.board[len(self.board) // 2 - 1][-1],
+            self.board[len(self.board) // 2][-1],
+            self.board[len(self.board) // 2 + 1][-1],
+            self.board[len(self.board) // 2][-2],
+            self.board[len(self.board) // 2 + 1][-2]
+        ]
+        for elm in self.throne_0:
+            elm.set_tile(Throne(0))
+        for elm in self.throne_1:
+            elm.set_tile(Throne(1))
+        # Добавление ресурсов
+        for _ in range(20):
+            tile = choice(self.board[randint(0, len(self.board)) - 1]).tile
+            if tile.useful and not any(tile.resources):
+                tile.resources[randint(0, 2)] += randint(1, 3)
 
     def change_hexagons_size(self, cell_size, m_p):
         diagonal = cell_size * (3 ** 0.5)
@@ -77,22 +110,20 @@ class Board:
     def draw_hex_map(self):
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
-                if str(self.board[i][j].tile) == "BaseTile":
-                    pygame.draw.polygon(self.screen, pygame.Color("white"), self.board[i][j].points, 1)
+                if self.board[i][j].tile.can_move:
+                    pygame.draw.polygon(self.screen, self.board[i][j].tile.color, self.board[i][j].points,
+                                        round(2 * (self.cell_size / self.start_cell_size))
+                                        if self.board[i][j] == self.chosen_unit else 1)
                 else:
-                    pygame.draw.polygon(self.screen, pygame.Color("grey"), self.board[i][j].points)
+                    pygame.draw.polygon(self.screen, self.board[i][j].tile.color, self.board[i][j].points)
 
     def draw_units(self):
         for i in range(len(self.board)):
             for j in range(len(self.board[0])):
                 if self.board[i][j]:
                     if not self.board[i][j].unit is None:
-                        pygame.draw.rect(self.screen, pygame.Color("red"), (
-                            self.board[i][j].center[0] - self.cell_size // 2,
-                            self.board[i][j].center[1] - self.diagonal // 2,
-                            self.cell_size,
-                            self.diagonal
-                        ))
+                        self.board[i][j].unit.draw(self.screen, self.board[i][j],
+                                                   self.cell_size, self.diagonal)
 
     def chose_hexagon(self, pos):
         obj = min(self.one_d_board, key=lambda x: ((x.center[0] - pos[0]) ** 2 + (x.center[1] - pos[1]) ** 2) ** 0.5)
@@ -103,7 +134,13 @@ class Board:
 
     def chose_unit(self, pos):
         hexagon = self.chose_hexagon(pos)
-        if not hexagon or hexagon.unit is None:
+        if not hexagon or hexagon.unit is None or hexagon.unit.player != self.turn:
+            return None
+        return hexagon
+
+    def chose_tile(self, pos):
+        hexagon = self.chose_hexagon(pos)
+        if not hexagon or hexagon.tile.__class__ == BaseTile or hexagon.tile.player != self.turn:
             return None
         return hexagon
 
@@ -121,7 +158,8 @@ class Board:
                                pos[1] + move + 1 + helper_2 + (1 if j == pos[0] and helper_2 else 0)):
                     try:
                         if i < 0 or i >= len(self.board) or j < 0 or j >= len(self.board[0]) \
-                                or pos == (j, i) or not self.board[i][j].tile.can_move:
+                                or pos == (j, i) or not self.board[i][j].tile.can_move \
+                                or self.board[i][j] == self.chosen_unit:
                             raise IndexError
                         if self.board[i][j] not in self.hexagons_to_move:
                             self.hexagons_to_move[self.board[i][j]] = num_
@@ -143,12 +181,29 @@ class Board:
                                    self.board[elm.index[1]][elm.index[0]].center, 2, 5)
 
     def move_unit(self, to_hexagon):
-        if to_hexagon in self.hexagons_to_move and not self.chosen_unit == to_hexagon:
-            self.chosen_unit.unit.move(self.hexagons_to_move[to_hexagon])
-            self.board[to_hexagon.index[1]][to_hexagon.index[0]].unit = self.chosen_unit.unit
-            self.chosen_unit.unit = None
+        if to_hexagon in self.hexagons_to_move:
+            if not self.chosen_unit == to_hexagon:
+                self.chosen_unit.unit.move(self.hexagons_to_move[to_hexagon])
+                self.board[to_hexagon.index[1]][to_hexagon.index[0]].unit = self.chosen_unit.unit
+                self.chosen_unit.unit = None
+                self.chosen_unit = None
+                self.hexagons_to_move = {}
+        else:
             self.chosen_unit = None
             self.hexagons_to_move = {}
+
+    def draw_throne_window(self):
+        if self.throne_menu:
+            pygame.draw.rect(self.screen, Color("black"),
+                             (20 if self.turn else self.width - self.width // 3 - 20, 20,
+                              self.width // 3, self.height - 40))
+            pygame.draw.rect(self.screen, Color("white"),
+                             (20 if self.turn else self.width - self.width // 3 - 20, 20,
+                              self.width // 3, self.height - 40), 3)
+
+    def click_in_throne_menu(self, pos):
+        x = 20 if self.turn else self.width - self.width // 3 - 20
+        return x <= pos[0] <= x + self.width // 3 and 20 <= pos[1] <= self.height - 20
 
     def update(self):
         for event in pygame.event.get():
@@ -157,9 +212,16 @@ class Board:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     if not self.hexagons_to_move:
-                        self.chosen_unit = self.chose_unit(event.pos)
+                        x = 20 if self.turn else self.width - self.width // 3 - 20
+                        if ((not self.turn and self.chose_tile(event.pos) in self.throne_0)
+                                or (self.turn and self.chose_tile(event.pos) in self.throne_1)):
+                            self.throne_menu = not self.throne_menu
+                        else:
+                            if not self.click_in_throne_menu(event.pos):
+                                self.chosen_unit = self.chose_unit(event.pos)
                     else:
-                        self.move_unit(self.chose_hexagon(event.pos))
+                        if not self.click_in_throne_menu(event.pos):
+                            self.move_unit(self.chose_hexagon(event.pos))
                 elif event.button == 2:
                     self.changing_camera_pos = True
                 elif event.button == 4:
@@ -193,17 +255,33 @@ class Board:
                             self.camera_pos[1] -= event.rel[1]
                             self.change_hexagons_pos((0, event.rel[1]))
 
+    def draw_resources(self):
+        for i in range(len(self.board)):
+            for j in range(len(self.board[0])):
+                if any(self.board[i][j].tile.resources):
+                    index = self.board[i][j].tile.resources.index(list(filter(lambda x: x,
+                                                                              self.board[i][j].tile.resources))[0])
+                    pygame.draw.circle(self.screen, {0: Color("yellow"),
+                                                     1: Color("brown"),
+                                                     2: Color("grey")}[index],
+                                       (self.board[i][j].center[0],
+                                        self.board[i][j].center[1] + self.diagonal / 3 + self.diagonal / 24),
+                                       self.diagonal / 7)
+
     def render(self):
-        self.board[0][0].set_unit(BaseUnit())
+        self.board[0][0].set_unit(BaseUnit(0))
         self.board[3][3].set_tile(Mount())
+        pygame.init()
         while self.rendering:
             self.screen.fill((0, 0, 0))
             self.draw_hex_map()
             self.draw_units()
             self.draw_chosen_unit()
+            self.draw_resources()
+            self.draw_throne_window()
             self.update()
             pygame.display.flip()
 
 
-test = Board(400, 400, 20)
+test = Board(1080, 900, 20)
 test.render()
