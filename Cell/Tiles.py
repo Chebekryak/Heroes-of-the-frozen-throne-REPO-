@@ -15,6 +15,7 @@ class BaseTile:
 class Mount(BaseTile):
     def __init__(self):
         super().__init__(False, False)
+        self.player = -1
 
 
 class Throne(BaseTile):
