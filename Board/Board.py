@@ -133,11 +133,13 @@ class Board:
         else:
             return obj
 
-    def chose_unit(self, pos):
-        hexagon = self.chose_hexagon(pos)
+    def chose_unit(self, hexagon):
+        if self.hexagons_to_move:
+            self.hexagons_to_move = {}
         if not hexagon or hexagon.unit is None or hexagon.unit.player != self.turn:
             self.chosen_unit = None
-        self.chosen_unit = hexagon
+        else:
+            self.chosen_unit = hexagon
 
     def chose_tile(self, pos):
         hexagon = self.chose_hexagon(pos)
@@ -176,17 +178,19 @@ class Board:
                 for num in range(self.chosen_unit.unit.moved):
                     new = []
                     for elm in to_do:
-                        if not (elm.unit and elm.unit.player != self.turn):
+                        if not (elm.unit and elm.unit != self.chosen_unit.unit):
                             new += add_to_hexagons_to_move(elm, num + 1)
                     to_do = new[:]
             for elm in self.hexagons_to_move.keys():
                 if elm.unit is None:
                     pygame.draw.circle(self.screen, pygame.Color("white"),
                                        self.board[elm.index[1]][elm.index[0]].center, 2, 5)
-                else:
+                elif elm.unit.player != self.turn:
                     pygame.draw.circle(self.screen, pygame.Color("red"),
                                        self.board[elm.index[1]][elm.index[0]].center, 2, 5)
                     pygame.draw.polygon(self.screen, pygame.Color("red"), elm.points, 3)
+                else:
+                    pygame.draw.polygon(self.screen, pygame.Color("green"), elm.points, 3)
 
     def move_unit(self, to_hexagon):
         if to_hexagon in self.hexagons_to_move:
@@ -258,30 +262,47 @@ class Board:
                 self.rendering = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    if self.chose_hexagon(event.pos):
+                    chosen_hexagon = self.chose_hexagon(event.pos)
+                    if chosen_hexagon:
                         if not self.hexagons_to_move:
                             if ((not self.turn and self.chose_tile(event.pos) in self.throne_0)
                                     or (self.turn and self.chose_tile(event.pos) in self.throne_1)):
+                                self.chosen_unit = None
                                 self.throne_menu = not self.throne_menu
                             elif self.throne_menu and self.click_in_throne_menu(event.pos):
-                                print(self.click_in_throne_menu(event.pos))
                                 self.use_throne_menu(event.pos)
                             elif self.chosen_unit:
+                                if chosen_hexagon.unit:
+                                    if chosen_hexagon.unit.player == self.turn:
+                                        if chosen_hexagon == self.chosen_unit:
+                                            self.chosen_unit = None
+                                        else:
+                                            self.chose_unit(chosen_hexagon)
+                                    else:
+                                        self.chose_unit(chosen_hexagon)
+                                else:
+                                    self.chose_unit(chosen_hexagon)
+                            elif chosen_hexagon.unit:
+                                self.chose_unit(chosen_hexagon)
+                            else:
                                 self.chosen_unit = None
-                                self.hexagons_to_move = {}
-                            elif self.chose_hexagon(event.pos).unit:
-                                self.chose_unit(event.pos)
                         else:
                             if self.throne_menu and self.click_in_throne_menu(event.pos):
                                 self.use_throne_menu(event.pos)
                             elif self.chosen_unit:
-                                if self.chose_hexagon(event.pos).unit is None:
-                                    self.move_unit(self.chose_hexagon(event.pos))
-                                elif self.chose_hexagon(event.pos) in self.hexagons_to_move:
+                                if chosen_hexagon.unit is None:
+                                    self.move_unit(chosen_hexagon)
+                                elif chosen_hexagon.unit.player == self.turn:
+                                    if chosen_hexagon == self.chosen_unit:
+                                        self.chosen_unit = None
+                                        self.hexagons_to_move = {}
+                                    else:
+                                        self.chose_unit(chosen_hexagon)
+                                elif chosen_hexagon in self.hexagons_to_move:
                                     if self.chosen_unit.unit.attack(
-                                            self.hexagons_to_move[self.chose_hexagon(event.pos)],
-                                            self.chose_hexagon(event.pos).unit):
-                                        self.health_bars += [self.chosen_unit, self.chose_hexagon(event.pos)]
+                                            self.hexagons_to_move[chosen_hexagon],
+                                            chosen_hexagon.unit):
+                                        self.health_bars += [self.chosen_unit, chosen_hexagon]
                                         self.chosen_unit = None
                                         self.hexagons_to_move = {}
                                 else:
@@ -339,7 +360,10 @@ class Board:
                                        self.diagonal / 7)
 
     def render(self):
+        self.board[0][0].set_unit(BaseUnit(0))
         self.board[0][4].set_unit(Warrior(0))
+        self.board[0][5].set_unit(Warrior(0))
+        self.board[1][5].set_unit(Warrior(0))
         self.board[1][4].set_unit(Warrior(1))
         self.board[3][3].set_tile(Mount())
         pygame.init()
